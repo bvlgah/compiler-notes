@@ -1,1 +1,8 @@
+# Vim
 *.swp
+
+# Clangd
+.cache
+
+# Build directory
+build
