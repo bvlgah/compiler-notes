@@ -13,3 +13,4 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(deps/googletest)
 add_subdirectory(dominators)
+add_subdirectory(llvm_code_example)
