@@ -3,9 +3,10 @@
 
 # Clangd
 .cache
+compile_commands.json
 
 # Build directory
-build
+out
 
 # Ignore pyenv
 env
