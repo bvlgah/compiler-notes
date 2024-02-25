@@ -1,4 +1,4 @@
-#include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
@@ -10,8 +10,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <deque>
 #include <iterator>
-#include <queue>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -24,44 +24,58 @@ namespace {
 
 class Analyzer {
 public:
-  explicit Analyzer(const Function &F)
-      : Fun(F), Blocks(), LiveIns(), LiveOuts(), Defs(), Uses() {
-    initVisitingOrder();
+  explicit Analyzer()
+      : Fun(nullptr), LiveIns(), LiveOuts(), Defs(), Uses() {}
+
+  void run(const Function &F) {
+    init(F);
+    compute();
   }
 
-  void run() {
-    init();
-    compute();
-    print();
+  void clear() {
+    Fun = nullptr;
+    LiveIns.clear();
+    LiveOuts.clear();
+    Defs.clear();
+    Uses.clear();
+  }
+
+  void print(raw_ostream &OS) const {
+    assert(Fun && "Function not specified");
+    OS << "Result of live variable analyses for function '"
+       << Fun->getName() << '\'' << '\n';
+    for (const BasicBlock &Block : *Fun) {
+      OS << "  live-in variables of block '"
+         << Block.getName() << "': ";
+      auto LiveInIt = LiveIns.find(&Block);
+      assert(LiveInIt != LiveIns.end() && "an unknown basic block");
+      printValueSet(llvm::errs(), LiveInIt->second);
+      OS << '\n';
+
+      auto LiveOutIt = LiveOuts.find(&Block);
+      assert(LiveOutIt != LiveOuts.end() && "an unknown basic block");
+      OS << "  live-out variables of block '"
+         << Block.getName() << "': ";
+      printValueSet(llvm::errs(), LiveOutIt->second);
+      OS << '\n';
+    }
   }
 
 private:
   using ValueSetT = std::unordered_set<const Value *>;
   using BlockValueMapT = std::unordered_map<const BasicBlock *, ValueSetT>;
 
-  void initVisitingOrder() {
-    Blocks.reserve(Fun.size());
-    SmallPtrSet<const BasicBlock *, 8> VisitedBB;
-    for (const BasicBlock &BB : Fun) {
-      if (!succ_empty(&BB))
-        continue;
-      std::copy(ipo_ext_begin<const BasicBlock*>(&BB, VisitedBB),
-                ipo_ext_end<const BasicBlock *>(&BB, VisitedBB),
-                std::back_inserter(Blocks));
-    }
-    assert(Blocks.size() == Fun.size() && "some basic blocks are not visited");
-  }
-
-  void init() {
-    for (const BasicBlock *Block : Blocks) {
-      LiveIns.emplace(Block, ValueSetT());
-      LiveOuts.emplace(Block, ValueSetT());
+  void init(const Function &F) {
+    Fun = &F;
+    for (const BasicBlock &Block : *Fun) {
+      LiveIns.emplace(&Block, ValueSetT());
+      LiveOuts.emplace(&Block, ValueSetT());
       BlockValueMapT::iterator DefIt;
       BlockValueMapT::iterator UseIt;
-      std::tie(DefIt, std::ignore) = Defs.emplace(Block, ValueSetT());
-      std::tie(UseIt, std::ignore) = Uses.emplace(Block, ValueSetT());
+      std::tie(DefIt, std::ignore) = Defs.emplace(&Block, ValueSetT());
+      std::tie(UseIt, std::ignore) = Uses.emplace(&Block, ValueSetT());
 
-      for (const Instruction &Inst : *Block) {
+      for (const Instruction &Inst : Block) {
         for (const Use &U : Inst.operands()) {
           const Value *V = U.get();
           if (llvm::isa<llvm::Constant>(V)
@@ -73,26 +87,6 @@ private:
         if (!Inst.getType()->isVoidTy() && !UseIt->second.count(&Inst))
           DefIt->second.insert(&Inst);
       }
-    }
-  }
-
-  void print() const {
-    llvm::errs() << "Result of live variable analyses for function '"
-                 << Fun.getName() << "'\n";
-    for (const BasicBlock &Block : Fun) {
-      llvm::errs() << "  live-in variables of block '"
-                   << Block.getName() << "': ";
-      auto LiveInIt = LiveIns.find(&Block);
-      assert(LiveInIt != LiveIns.end() && "an unknown basic block");
-      printValueSet(llvm::errs(), LiveInIt->second);
-      llvm::errs() << "\n";
-
-      auto LiveOutIt = LiveOuts.find(&Block);
-      assert(LiveOutIt != LiveOuts.end() && "an unknown basic block");
-      llvm::errs() << "  live-out variables of block '"
-                   << Block.getName() << "': ";
-      printValueSet(llvm::errs(), LiveOutIt->second);
-      llvm::errs() << "\n";
     }
   }
 
@@ -112,31 +106,25 @@ private:
   }
 
   void compute() {
-    /* bool Changed = true; */
-    /* while (Changed) { */
-    /*   Changed = false; */
-    /*   for (auto It = Blocks.rbegin(), End = Blocks.rend(); */
-    /*        It != End; ++It) { */
-    /*     updateLiveOut(*It); */
-    /*     Changed = updateLiveIn(*It) || Changed; */
-    /*   } */
-    /* } */
+    // Since live variable analysis is a backward problem, it is efficient to
+    // iterate in reverse preorder (live variables for successors of a node are
+    // computed first). And unreachable basic blocks will not be iterated over.
+    std::deque<const BasicBlock *> WorkList(df_begin(Fun), df_end(Fun));
+    errs() << "WorkList.size() = " << WorkList.size()
+           << ", Fun.size() = " << Fun->size() << '\n';
 
-    std::queue<const BasicBlock *> WorkList;
-    for (auto It = Blocks.rbegin(), End = Blocks.rend();
-         It != End; ++It)
-      WorkList.push(*It);
-    SmallPtrSet<const BasicBlock *, 8> QueuedBB(Blocks.begin(), Blocks.end());
+    SmallPtrSet<const BasicBlock *, 8> QueuedBB(WorkList.begin(),
+                                                WorkList.end());
     while (!WorkList.empty()) {
       const BasicBlock *BB = WorkList.front();
-      WorkList.pop();
+      WorkList.pop_front();
       QueuedBB.erase(BB);
       updateLiveOut(BB);
       if (updateLiveIn(BB)) {
         for (const BasicBlock *Pred : predecessors(BB)) {
           if (QueuedBB.count(Pred))
             continue;
-          WorkList.push(Pred);
+          WorkList.push_back(Pred);
           QueuedBB.insert(Pred);
         }
       }
@@ -169,8 +157,7 @@ private:
     }
   }
 
-  const llvm::Function &Fun;
-  std::vector<const BasicBlock *> Blocks;
+  const Function *Fun;
   BlockValueMapT LiveIns;
   BlockValueMapT LiveOuts;
   BlockValueMapT Defs;
@@ -184,10 +171,24 @@ public:
   explicit LiveVariableAnalysis() : FunctionPass(ID) {}
 
   bool runOnFunction(Function &F) override {
-    Analyzer Ana(F);
-    Ana.run();
+    LA.run(F);
     return false;
   }
+
+  void print(raw_ostream &OS, const Module *) const override {
+    LA.print(OS);
+  }
+
+  void releaseMemory() override {
+    LA.clear();
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesAll();
+  }
+
+private:
+  Analyzer LA;
 };
 
 char LiveVariableAnalysis::ID = 0;
