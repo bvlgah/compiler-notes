@@ -16,10 +16,13 @@ $ cmake -G Ninja -S . -B out
 $ ninja -C out
 ```
 
-Some pluggable passes are provided by `LLVMHello`, these can be run on Ubuntu
-with
+Some pluggable passes are provided by `LLVMHello` (in the new pass manager
+style, see [useful instructions on writing LLVM passes with the new pass
+manager](https://medium.com/@mshockwave/writing-llvm-pass-in-2018-preface-6b90fa67ae82)),
+these can be run on Ubuntu with
 
 ```
-opt-15 --load out/llvm_code_example/LLVMHello.so --enable-new-pm=0 \
-  --live-variable -S < test/livevar.ll 1> /dev/null
+opt-15 -load out/llvm_code_example/LLVMHello.so \
+  -disable-output \
+  -passes=live-variable llvm_code_example/test/livevar.ll
 ```
