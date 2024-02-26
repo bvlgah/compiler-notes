@@ -1,11 +1,17 @@
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/Compiler.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
@@ -110,9 +116,6 @@ private:
     // iterate in reverse preorder (live variables for successors of a node are
     // computed first). And unreachable basic blocks will not be iterated over.
     std::deque<const BasicBlock *> WorkList(df_begin(Fun), df_end(Fun));
-    errs() << "WorkList.size() = " << WorkList.size()
-           << ", Fun.size() = " << Fun->size() << '\n';
-
     SmallPtrSet<const BasicBlock *, 8> QueuedBB(WorkList.begin(),
                                                 WorkList.end());
     while (!WorkList.empty()) {
@@ -164,11 +167,21 @@ private:
   BlockValueMapT Uses;
 };
 
-class LiveVariableAnalysis : public FunctionPass {
+class LiveVariableAnalysis : public PassInfoMixin<LiveVariableAnalysis> {
+public:
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM) {
+    Analyzer LA;
+    LA.run(F);
+    LA.print(errs());
+    return PreservedAnalyses::all();
+  }
+};
+
+class LegacyLiveVariableAnalysis : public FunctionPass {
 public:
   static char ID;
 
-  explicit LiveVariableAnalysis() : FunctionPass(ID) {}
+  explicit LegacyLiveVariableAnalysis() : FunctionPass(ID) {}
 
   bool runOnFunction(Function &F) override {
     LA.run(F);
@@ -191,10 +204,26 @@ private:
   Analyzer LA;
 };
 
-char LiveVariableAnalysis::ID = 0;
+char LegacyLiveVariableAnalysis::ID = 0;
 
-RegisterPass<LiveVariableAnalysis> LiveVA(
+RegisterPass<LegacyLiveVariableAnalysis> LiveVA(
     "live-variable", "Live variable analysis",
     true /* CFGOnly */, false /* is_analysis */);
 
 } // end anonymous namespace
+
+extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
+llvmGetPassPluginInfo() {
+  return {LLVM_PLUGIN_API_VERSION, "LiveVariableAnalysis", "v0.1",
+          [](PassBuilder &Builder) {
+            Builder.registerPipelineParsingCallback(
+                [](StringRef Name, FunctionPassManager &FPM,
+                   ArrayRef<PassBuilder::PipelineElement>) {
+                  if (Name == "live-variable") {
+                    FPM.addPass(LiveVariableAnalysis());
+                    return true;
+                  } else
+                    return false;
+                });
+          }};
+}

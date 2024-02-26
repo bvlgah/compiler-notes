@@ -11,9 +11,5 @@ add_definitions(${LLVM_DEFINITIONS_LIST})
 message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 include(AddLLVM)
 
-add_llvm_library(LLVMHello MODULE
-  src/LiveVariableAnalysis.cpp
-  src/Hello.cpp
-
-  PLUGIN_TOOL
-  opt)
+add_llvm_pass_plugin(LLVMHello
+  src/LiveVariableAnalysis.cpp)
