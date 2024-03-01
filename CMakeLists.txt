@@ -11,6 +11,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined")
+
+
 add_subdirectory(deps/googletest)
-add_subdirectory(dominators)
+add_subdirectory(graphs)
 add_subdirectory(llvm_code_example)
