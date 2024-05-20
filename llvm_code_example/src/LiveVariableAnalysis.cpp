@@ -1,4 +1,5 @@
-#include "llvm/ADT/ArrayRef.h"
+#include "LiveVariableAnalysis.h"
+
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/StringRef.h"
@@ -8,21 +9,15 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/Compiler.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <algorithm>
 #include <cassert>
 #include <deque>
-#include <iterator>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 
 using namespace llvm;
 
@@ -212,18 +207,7 @@ RegisterPass<LegacyLiveVariableAnalysis> LiveVA(
 
 } // end anonymous namespace
 
-extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
-llvmGetPassPluginInfo() {
-  return {LLVM_PLUGIN_API_VERSION, "LiveVariableAnalysis", "v0.1",
-          [](PassBuilder &Builder) {
-            Builder.registerPipelineParsingCallback(
-                [](StringRef Name, FunctionPassManager &FPM,
-                   ArrayRef<PassBuilder::PipelineElement>) {
-                  if (Name == "live-variable") {
-                    FPM.addPass(LiveVariableAnalysis());
-                    return true;
-                  } else
-                    return false;
-                });
-          }};
+bool addLiveVariableAnalysis(llvm::FunctionPassManager &FPM) {
+  FPM.addPass(LiveVariableAnalysis());
+  return true;
 }

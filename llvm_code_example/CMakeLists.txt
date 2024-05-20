@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-find_package(LLVM 15 REQUIRED CONFIG)
+find_package(LLVM 19 REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
@@ -12,4 +12,7 @@ message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 include(AddLLVM)
 
 add_llvm_pass_plugin(LLVMHello
-  src/LiveVariableAnalysis.cpp)
+  src/Driver.cpp
+  src/LiveVariableAnalysis.cpp
+  src/Loop.cpp
+  src/SCCP.cpp)
