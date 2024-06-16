@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 
 #include <dlfcn.h>
+#include <link.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -28,4 +29,6 @@ extern void *loadLibrary(const char *Path, int Flag);
 
 extern void *loadLibraryNS(Lmid_t Nsid, const char *Path, int Flag);
 
-bool unloadLibrary(void *Handle);
+extern bool unloadLibrary(void *Handle);
+
+extern bool getNamespace(void *Handle, Lmid_t *Namespace);

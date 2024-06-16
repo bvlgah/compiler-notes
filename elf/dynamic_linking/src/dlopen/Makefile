@@ -6,7 +6,7 @@ libbar.so: bar.o
 	$(CC) $(CFLAGS) -shared -o $@ $<
 
 libfoo.so: foo.o
-	$(CC) $(CFLAGS) -shared -L. -o $@ $< -lutil
+	$(CC) $(CFLAGS) -Wl,-rpath,\$$ORIGIN -shared -L. -o $@ $< -lutil
 
 libutil.so: util.o
 	$(CC) $(CFLAGS) -shared -o $@ $< -ldl
@@ -17,5 +17,8 @@ libdltest.so: test.o libutil.so
 main: main.o libutil.so libdltest.so libfoo.so libbar.so
 	$(CC) $(CFLAGS) -Wl,-rpath,\$$ORIGIN -fPIE -L. -o $@ $< -lutil
 
+switch_main_module: switch_main_module.o libutil.so libfoo.so libbar.so
+	$(CC) $(CFLAGS) -Wl,-rpath,\$$ORIGIN -fPIE -L. -o $@ $< -lutil
+
 clean:
-	rm -rf *.o *.so main
+	rm -rf *.o *.so main switch_main_module

@@ -34,14 +34,14 @@ static struct link_map *getFirstMap(void *Handle) {
   return FirstMap;
 }
 
-static bool getNamespace(void *Handle, Lmid_t *Namespace) {
+bool getNamespace(void *Handle, Lmid_t *Namespace) {
   dlerror();
   if (dlinfo(Handle, RTLD_DI_LMID, Namespace)) {
     fprintf(stderr, "error: failed to get namespace of handle %p: %s\n",
             Handle, dlerror());
-    return false;
+    return true;
   }
-  return true;
+  return false;
 }
 
 void *lookupSymbol(void *Handle, const char *Name) {
@@ -60,7 +60,7 @@ static void printMap(FILE *Stream, struct link_map *Map) {
 
 bool printNamespace(FILE *Stream, void *Handle) {
   Lmid_t Namespace;
-  if (getNamespace(Handle, &Namespace))
+  if (!getNamespace(Handle, &Namespace))
     fprintf(Stream, "namespace %p has the following shared libraries:\n",
             (void *) Namespace);
   else
@@ -104,15 +104,15 @@ void *loadLibraryNS(Lmid_t Nsid, const char *Path, int Flag) {
 
   switch (Nsid) {
   case LM_ID_BASE:
-    fprintf(stderr, "error: failed to load shared library '%s'"
+    fprintf(stderr, "error: failed to load shared library '%s' "
             "into base namespace: %s\n", Path, dlerror());
     break;
   case LM_ID_NEWLM:
-    fprintf(stderr, "error: failed to load shared library '%s'"
+    fprintf(stderr, "error: failed to load shared library '%s' "
             "into a new namespace: %s\n", Path, dlerror());
     break;
   default:
-    fprintf(stderr, "error: failed to load shared library '%s'"
+    fprintf(stderr, "error: failed to load shared library '%s' "
             "into namespace %p: %s\n", Path, (void *) Nsid, dlerror());
   }
   return NULL;
