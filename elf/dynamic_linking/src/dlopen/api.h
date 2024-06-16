@@ -1,5 +1,9 @@
 #pragma once
 
-extern void greet(void);
+#include <stdbool.h>
 
-extern void *dlPromoteToGlobal(const char *LibPath);
+extern bool runTest(void);
+
+extern void bar(void);
+
+extern bool hasSymbolDefault(const char *Symbol);
