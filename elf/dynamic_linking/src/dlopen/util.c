@@ -117,21 +117,19 @@ static const char *getFlagDesc(int Flag) {
   static char Buf[512];
   char *Cur = Buf;
   size_t Size = sizeof(Buf);
-  bool First = true;
 
-  Cur = appendString(Cur, &Size, "(");
+  if (Flag & RTLD_GLOBAL) {
+    Cur = appendString(Cur, &Size, "RTLD_GLOBAL");
+  } else {
+    Cur = appendString(Cur, &Size, "RTLD_LOCAL");
+  }
 
 #define OUTPUT_RTLD_FLAG(FLAG)                                            \
   do {                                                                    \
-    if (Flag & FLAG) {                                                    \
-      if (!First) Cur = appendString(Cur, &Size, "|");                    \
-      Cur = appendString(Cur, &Size, #FLAG);                              \
-      First = false;                                                      \
-    }                                                                     \
+    if (Flag & FLAG)                                                      \
+      Cur = appendString(Cur, &Size, "|" #FLAG);                          \
   } while (0)
 
-  OUTPUT_RTLD_FLAG(RTLD_GLOBAL);
-  OUTPUT_RTLD_FLAG(RTLD_LOCAL);
   OUTPUT_RTLD_FLAG(RTLD_LAZY);
   OUTPUT_RTLD_FLAG(RTLD_NOW);
   OUTPUT_RTLD_FLAG(RTLD_NOLOAD);
@@ -139,13 +137,11 @@ static const char *getFlagDesc(int Flag) {
 
 #undef OUTPUT_RTLD_FLAG
 
-  Cur = appendString(Cur, &Size, ")");
-
   return Buf;
 }
 
 void *loadLibrary(const char *Path, int Flag) {
-  LOG_DEBUG("trying to load library from path '%s' with %s\n",
+  LOG_DEBUG("trying to load library from path '%s' with (%s)\n",
             Path, getFlagDesc(Flag));
   void *Handle = dlopen(Path, Flag);
 
@@ -156,7 +152,7 @@ void *loadLibrary(const char *Path, int Flag) {
 }
 
 void *loadLibraryNS(Lmid_t Nsid, const char *Path, int Flag) {
-  LOG_DEBUG("trying to load library from path '%s' with %s into namespace %s\n",
+  LOG_DEBUG("trying to load library from path '%s' with (%s) into namespace %s\n",
             Path, getFlagDesc(Flag), getNamespaceDesc(Nsid));
   void *Handle = dlmopen(Nsid, Path, Flag);
 
