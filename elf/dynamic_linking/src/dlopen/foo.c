@@ -39,9 +39,10 @@ bool checkSymbolMain(const char *Symbol) {
 
   if (lookupSymbol(Main, Symbol)) {
     LOG_DEBUG("symbol '%s' exists in main module\n", Symbol);
-    return false;
+    return unloadLibrary(Main);
   } else {
     LOG_DEBUG("symbol '%s' does not exist in main module\n", Symbol);
+    unloadLibrary(Main);
     return true;
   }
 }
