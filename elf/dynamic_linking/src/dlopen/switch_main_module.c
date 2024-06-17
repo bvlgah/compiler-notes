@@ -6,13 +6,25 @@
 #include <link.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-int main(void) {
+int main(int argc, const char **argv) {
   void *LibBar = NULL;
   void *LibFoo = NULL;
+  int DefaultFlag = RTLD_LOCAL;
+
+  if (argc > 1) {
+    if (!strcmp(argv[1], "-g")) {
+      DefaultFlag = RTLD_GLOBAL;
+    }
+    else {
+      fprintf(stderr, "error: unknown option '%s'\n", argv[1]);
+      return EXIT_FAILURE;
+    }
+  }
 
   LibBar = loadLibraryNS(LM_ID_NEWLM, "$ORIGIN/libbar.so",
-      RTLD_LOCAL | RTLD_LAZY);
+      DefaultFlag | RTLD_LAZY);
   if (!LibBar) goto onError;
 
   Lmid_t NewNamespace;
@@ -20,7 +32,7 @@ int main(void) {
     goto onError;
 
   LibFoo = loadLibraryNS(NewNamespace, "$ORIGIN/libfoo.so",
-      RTLD_LOCAL | RTLD_LAZY);
+      DefaultFlag | RTLD_LAZY);
   if (!LibFoo) goto onError;
 
   typedef bool (*PrintMainType)(void);
