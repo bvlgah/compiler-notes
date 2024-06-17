@@ -88,6 +88,7 @@ bool printDSOHandle(FILE *Stream, void *Handle) {
 }
 
 void *loadLibrary(const char *Path, int Flag) {
+  LOG_DEBUG("trying to load library from path '%s'\n", Path);
   void *Handle = dlopen(Path, Flag);
 
   if (!Handle)
@@ -97,6 +98,7 @@ void *loadLibrary(const char *Path, int Flag) {
 }
 
 void *loadLibraryNS(Lmid_t Nsid, const char *Path, int Flag) {
+  LOG_DEBUG("trying to load library from path '%s'\n", Path);
   void *Handle = dlmopen(Nsid, Path, Flag);
 
   if (Handle)
@@ -119,6 +121,8 @@ void *loadLibraryNS(Lmid_t Nsid, const char *Path, int Flag) {
 }
 
 bool unloadLibrary(void *Handle) {
+  struct link_map *Map = getMap(Handle);
+  LOG_DEBUG("trying to unload library '%s'\n", Map->l_name);
   int Error;
   if ((Error = dlclose(Handle)))
     fprintf(stderr, "error: failed to unload shared library: %s\n", dlerror());

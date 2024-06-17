@@ -12,7 +12,7 @@
 #else
 #define LOG_DEBUG(...)                                                    \
   do {                                                                    \
-    fprintf(stderr, "DEBUG: ");                                           \
+    fprintf(stderr, "DEBUG %s (%s): ", __func__, __FILE__);               \
     fprintf(stderr, __VA_ARGS__);                                         \
   } while (0)
 #endif
