@@ -54,7 +54,7 @@ void *lookupSymbol(void *Handle, const char *Name) {
 }
 
 static void printMap(FILE *Stream, struct link_map *Map) {
-  fprintf(Stream, "shared library '%s' is loaded at %p\n",
+  fprintf(Stream, "shared library '%s' loaded at %p\n",
           Map->l_name, (void *) Map->l_addr);
 }
 

@@ -27,15 +27,21 @@ int main(void) {
   typedef bool (*CheckFuncType)(const char*);
   PrintMainType PrintMain = (PrintMainType) lookupSymbol(LibFoo,
       "printMainModule");
-  CheckFuncType Check = (CheckFuncType) lookupSymbol(LibFoo,
-      "hasSymbolDefault");
-  if (!PrintMain || !Check) goto onError;
+  CheckFuncType CheckDefault = (CheckFuncType) lookupSymbol(LibFoo,
+      "checkSymbolDefault");
+  CheckFuncType CheckMain = (CheckFuncType) lookupSymbol(LibFoo,
+      "checkSymbolMain");
+  if (!PrintMain || !CheckDefault || !CheckMain) goto onError;
 
-  Check("bar");
+  const char *SymbolName = "bar";
   if (PrintMain()) goto onError;
+  CheckDefault(SymbolName);
+  CheckMain(SymbolName);
+
   unloadLibrary(LibBar);
-  Check("bar");
   if (PrintMain()) goto onError;
+  CheckDefault(SymbolName);
+  CheckMain(SymbolName);
 
   unloadLibrary(LibFoo);
   return EXIT_SUCCESS;
