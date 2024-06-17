@@ -87,8 +87,66 @@ bool printDSOHandle(FILE *Stream, void *Handle) {
   return false;
 }
 
+// Don't free the return value.
+static const char *getNamespaceDesc(Lmid_t Nsid) {
+  static char Buf[30];
+  switch (Nsid) {
+  case LM_ID_BASE:
+    return "LM_ID_BASE";
+  case LM_ID_NEWLM:
+    return "LM_ID_NEWLM";
+  default:
+    snprintf(Buf, sizeof(Buf), "%p", (void *) Nsid);
+    return Buf;
+  }
+}
+
+static char *appendString(char *Dst, size_t *Size, const char *Str) {
+  int Ret = snprintf(Dst, *Size, "%s", Str);
+  if (Ret <= 0) {
+    return Dst;
+  }
+  else {
+    *Size -= (size_t) Ret;
+    return Dst + (size_t) Ret;
+  }
+}
+
+// Don't free the return value.
+static const char *getFlagDesc(int Flag) {
+  static char Buf[512];
+  char *Cur = Buf;
+  size_t Size = sizeof(Buf);
+  bool First = true;
+
+  Cur = appendString(Cur, &Size, "(");
+
+#define OUTPUT_RTLD_FLAG(FLAG)                                            \
+  do {                                                                    \
+    if (Flag & FLAG) {                                                    \
+      if (!First) Cur = appendString(Cur, &Size, "|");                    \
+      Cur = appendString(Cur, &Size, #FLAG);                              \
+      First = false;                                                      \
+    }                                                                     \
+  } while (0)
+
+  OUTPUT_RTLD_FLAG(RTLD_GLOBAL);
+  OUTPUT_RTLD_FLAG(RTLD_LOCAL);
+  OUTPUT_RTLD_FLAG(RTLD_LAZY);
+  OUTPUT_RTLD_FLAG(RTLD_NOW);
+  OUTPUT_RTLD_FLAG(RTLD_NOLOAD);
+  OUTPUT_RTLD_FLAG(RTLD_NODELETE);
+
+#undef OUTPUT_RTLD_FLAG
+
+  Cur = appendString(Cur, &Size, ")");
+
+  return Buf;
+}
+
 void *loadLibrary(const char *Path, int Flag) {
-  LOG_DEBUG("trying to load library from path '%s'\n", Path);
+  LOG_DEBUG("trying to load library from path '%s' with %s\n",
+            Path, getFlagDesc(Flag));
   void *Handle = dlopen(Path, Flag);
 
   if (!Handle)
@@ -98,25 +156,15 @@ void *loadLibrary(const char *Path, int Flag) {
 }
 
 void *loadLibraryNS(Lmid_t Nsid, const char *Path, int Flag) {
-  LOG_DEBUG("trying to load library from path '%s'\n", Path);
+  LOG_DEBUG("trying to load library from path '%s' with %s into namespace %s\n",
+            Path, getFlagDesc(Flag), getNamespaceDesc(Nsid));
   void *Handle = dlmopen(Nsid, Path, Flag);
 
   if (Handle)
     return Handle;
 
-  switch (Nsid) {
-  case LM_ID_BASE:
-    fprintf(stderr, "error: failed to load shared library '%s' "
-            "into base namespace: %s\n", Path, dlerror());
-    break;
-  case LM_ID_NEWLM:
-    fprintf(stderr, "error: failed to load shared library '%s' "
-            "into a new namespace: %s\n", Path, dlerror());
-    break;
-  default:
-    fprintf(stderr, "error: failed to load shared library '%s' "
-            "into namespace %p: %s\n", Path, (void *) Nsid, dlerror());
-  }
+  fprintf(stderr, "error: failed to load shared library '%s' "
+          "into namespace %s: %s\n", Path, getNamespaceDesc(Nsid), dlerror());
   return NULL;
 }
 
