@@ -1,0 +1,53 @@
+digraph process {
+  newrank="true";
+
+  subgraph global {
+    cluster="true";
+    label="Global Search Scope";
+    color="lightgreen";
+    style="dashed";
+    node [color="lightgreen" style="filled"];
+    edge [color="green"];
+    exe [label="executable" fontname="bold"];
+    liba [label="libA.so"];
+    libb [label="libB.so"];
+    libc [label="libC.so"];
+    libd [label="libD.so"];
+    libe [label="libE.so"];
+    exe -> liba;
+    exe -> libb;
+    exe -> libe;
+    liba -> libc;
+    liba -> libd;
+    libb -> libe;
+
+    libf [label="libF.so" fontname="bold"];
+    libg [label="libG.so"];
+    libh [label="libH.so"];
+    { style="invis"; libf -> libg; libf -> libh; }
+
+    {
+      style="invis";
+      libk [label="libK.so" color="lightgray" fontname="bold"];
+      libl [label="libL.so" color="lightgray"];
+    }
+  }
+
+  subgraph scope_1 {
+    cluster="true";
+    label="Search Scope #1";
+    color="lightgray";
+    style="dashed";
+    node [color="lightgray" style="filled"];
+    edge [color="gray"];
+    ordering="in"
+    libi [label="libI.so" fontname="bold"];
+    libj [label="libJ.so"];
+    libi -> libj;
+    libi -> libk;
+    libi -> libl;
+    libk -> libl;
+  }
+
+  { rank=same; libj; libl; }
+}
