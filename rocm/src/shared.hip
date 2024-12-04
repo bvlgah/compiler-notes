@@ -14,7 +14,7 @@ __global__ void sharedMemoryReadKernel(
   auto startClock = clock();
   shared[idx]++;
   auto endClock = clock();
-  output[tid] = endClock - startClock;
+  output[tid] = static_cast<nvbench::int32_t>(endClock - startClock);
 }
 
 static std::ostream

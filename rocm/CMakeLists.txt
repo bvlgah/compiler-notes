@@ -1,2 +1,8 @@
+link_libraries(nvbench::main)
+
+find_package(hipblas REQUIRED)
+
 add_executable(shared src/shared.hip)
-target_link_libraries(shared nvbench::main)
+add_executable(mat_mul src/mat_mul.hip)
+
+target_link_libraries(mat_mul PRIVATE roc::hipblas)
