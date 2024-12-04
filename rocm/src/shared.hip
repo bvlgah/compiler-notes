@@ -7,13 +7,14 @@
 
 __global__ void sharedMemoryReadKernel(
     nvbench::int32_t * __restrict__ output, const std::size_t stride) {
-  extern __shared__ nvbench::int32_t shared[];
+  extern __shared__ std::uint32_t shared[];
   const std::size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  const std::size_t idx = tid * stride;
 
   auto startClock = clock();
-  shared[tid * stride] = 0;
+  shared[idx]++;
   auto endClock = clock();
-  output[tid] = endClock - startClock + tid;
+  output[tid] = endClock - startClock;
 }
 
 static std::ostream
@@ -63,5 +64,5 @@ void sharedMemoryThroughput(nvbench::state &state) {
 }
 
 NVBENCH_BENCH(sharedMemoryThroughput)
-    .add_int64_power_of_two_axis("Stride", nvbench::range(0, 5, 1))
-    .add_int64_power_of_two_axis("ThreadSize", nvbench::range(5, 5, 1));
+    .add_int64_power_of_two_axis("Stride", nvbench::range(0, 6, 1))
+    .add_int64_power_of_two_axis("ThreadSize", nvbench::range(5, 8, 1));
