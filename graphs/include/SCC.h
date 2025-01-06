@@ -7,7 +7,7 @@
 
 class SCCInterface {
 public:
-  using SCCNode = GraphNodeSP;
+  using SCCNode = const GraphNode *;
   using SCCNodeVec = std::vector<SCCNode>;
   using ResultT = std::vector<SCCNodeVec>;
 

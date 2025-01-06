@@ -30,7 +30,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Enable sanitizers for debug builds by default. If `NOTES_ENABLE_SANITIZER` is
 # set, sanitizers are enbaled for all types of builds.
 set(NOTES_SANITIZER_FLAGS
-  -fsanitize=address -fsanitize=undefined
+  "-fsanitize=address -fsanitize=undefined"
   CACHE STRING "Compiler Sanitizer Options")
 set(NOTES_ENABLE_SANITIZER OFF CACHE BOOL "Enable Sanitizers")
 

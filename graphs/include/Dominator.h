@@ -13,11 +13,11 @@ class DominatorTree {
 public:
     DominatorTree() : m_nodeMap(), m_root() {}
 
-    bool reconstruct(const Graph &graph, const GraphNodeSP &entry);
+    bool reconstruct(const Graph &graph, const GraphNode &entry);
 
-    bool dominates(const GraphNodeSP &node1, const GraphNodeSP &node2) const;
+    bool dominates(const GraphNode &node1, const GraphNode &node2) const;
 
-    bool iDominates(const GraphNodeSP &parent, const GraphNodeSP &child) const;
+    bool iDominates(const GraphNode &parent, const GraphNode &child) const;
 
     void print(std::ostream &output) const;
 
@@ -34,7 +34,7 @@ private:
 
         static constexpr int ROOT_LEVEL = 0;
 
-        DominatorTreeNode(const GraphNodeSP &graphNode, int level)
+        DominatorTreeNode(const GraphNode &graphNode, int level)
             : m_parent(), m_children(),
               m_level(level), m_graphNode(graphNode) {}
 
@@ -44,7 +44,7 @@ private:
 
         int getLevel() const { return m_level; }
 
-        const GraphNodeWP &getGraphNode() const { return m_graphNode; }
+        const GraphNode &getGraphNode() const { return m_graphNode; }
 
         void setParent(const DominatorTreeNodeWP &parent) {
             DominatorTreeNodeSP oldParent = m_parent.lock();
@@ -72,7 +72,7 @@ private:
     private:
         DominatorTreeNodeWP m_parent;
         std::vector<DominatorTreeNodeSP> m_children;
-        GraphNodeWP m_graphNode;
+        const GraphNode &m_graphNode;
         int m_level;
     };
 
@@ -86,12 +86,12 @@ private:
         int iDom = SLT_FOREST_INVALID_DFS_NUM;
         int label = SLT_FOREST_INVALID_DFS_NUM;
         int ancestor = SLT_FOREST_INVALID_DFS_NUM;
-        GraphNodeSP graphNode;
+        const GraphNode &graphNode;
         std::vector<int> bucket; // which this node is the semi-domniator of
 
-        SLTForestNode(int parent, int dfsNum, const GraphNodeSP &graphNodeSP)
+        SLTForestNode(int parent, int dfsNum, const GraphNode &graphNode)
             : parent(parent), dfsNum(dfsNum), semiDom(dfsNum), iDom(dfsNum),
-              label(dfsNum), graphNode(graphNodeSP),
+              label(dfsNum), graphNode(graphNode),
               bucket() {}
 
         void print(std::ostream &ouput) const;
@@ -104,16 +104,16 @@ private:
         SLTForest();
 
         const std::vector<SLTForestNodeSP> &recalculate(
-            const GraphNodeSP &entry);
+            const GraphNode &entry);
 
         void print(std::ostream &ouput) const;
 
     private:
-        void DoDFS(const GraphNodeSP &entry);
+        void DoDFS(const GraphNode &entry);
 
-        SLTForestNodeSP CreateForestNode(int parent, const GraphNodeSP &child);
+        SLTForestNodeSP CreateForestNode(int parent, const GraphNode &child);
 
-        SLTForestNodeSP FindForestNode(const GraphNodeSP &graphNodeSP) const;
+        SLTForestNodeSP FindForestNode(const GraphNode &graphNode) const;
 
         void Clear();
 
@@ -126,10 +126,10 @@ private:
             const GraphNode::const_iterator &end);
 
         std::vector<SLTForestNodeSP> m_forestNodes;
-        std::unordered_map<GraphNodeSP, SLTForestNodeSP> m_nodeMap;
+        std::unordered_map<const GraphNode *, SLTForestNodeSP> m_nodeMap;
         int m_lastDFSNum;
     };
 
-    std::unordered_map<GraphNodeSP, DominatorTreeNodeSP> m_nodeMap;
+    std::unordered_map<const GraphNode *, DominatorTreeNodeSP> m_nodeMap;
     DominatorTreeNodeSP m_root;
 };

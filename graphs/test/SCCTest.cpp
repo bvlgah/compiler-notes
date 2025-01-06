@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <vector>
 
-#define CONNECT_NODES(node1, node2) G.connect(Nodes[node1], Nodes[node2])
+#define CONNECT_NODES(node1, node2) G.connect(*Nodes[node1], *Nodes[node2])
 
 #define SCC_COMPUTE_AND_ASSERT()                                \
   do {                                                          \
@@ -38,9 +38,9 @@ bool isEqual(const SCCInterface::ResultT &Result1,
 
 TEST(SCCTest, TestCase1) {
   Graph G;
-  std::unordered_map<char, GraphNodeSP> Nodes;
+  std::unordered_map<char, GraphNode *> Nodes;
   for (char Start = 'A'; Start <= 'I'; ++Start)
-    Nodes.emplace(Start, G.createNode(std::string(1, Start).c_str()));
+    Nodes.emplace(Start, &G.createNode(std::string(1, Start).c_str()));
 
   // This test case is from https://www.cs.cornell.edu/courses/cs4120/2023sp/notes.html?id=iterative
   CONNECT_NODES('A', 'B');
@@ -69,9 +69,9 @@ TEST(SCCTest, TestCase1) {
 
 TEST(SCCTest, TestCase2) {
   Graph G;
-  std::unordered_map<char, GraphNodeSP> Nodes;
+  std::unordered_map<char, GraphNode *> Nodes;
   for (char Start = 'a'; Start <= 'h'; ++Start)
-    Nodes.emplace(Start, G.createNode(std::string(1, Start).c_str()));
+    Nodes.emplace(Start, &G.createNode(std::string(1, Start).c_str()));
 
   // This test case is from Introduction to Algorithms 4th, 20.5 Strongly
   // connected components.

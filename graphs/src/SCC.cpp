@@ -17,11 +17,8 @@ class ForwardVisitState {
   GraphNode::const_iterator Current;
 
 public:
-  explicit ForwardVisitState(const SCCInterface::SCCNode &NodeSP)
-    : Node(NodeSP), Current(Node->succBegin()) {}
-
-  explicit ForwardVisitState(SCCInterface::SCCNode &&NodeSP)
-    : Node(std::move(NodeSP)), Current(Node->succBegin()) {}
+  explicit ForwardVisitState(SCCInterface::SCCNode Node)
+    : Node(Node), Current(Node->succBegin()) {}
 
   bool isAllChildrenVisited() const {
     return Current == Node->succEnd();
@@ -29,7 +26,7 @@ public:
 
   SCCInterface::SCCNode nextChild() {
     assert(!isAllChildrenVisited() && "all successors are visited");
-    SCCInterface::SCCNode Child = Current->lock();
+    SCCInterface::SCCNode Child = *Current;
     ++Current;
     return Child;
   }
@@ -46,11 +43,8 @@ class BackwardVisitState {
   GraphNode::const_iterator Current;
 
 public:
-  explicit BackwardVisitState(const SCCInterface::SCCNode &NodeSP)
-    : Node(NodeSP), Current(Node->predBegin()) {}
-
-  explicit BackwardVisitState(SCCInterface::SCCNode &&NodeSP)
-    : Node(std::move(NodeSP)), Current(Node->predBegin()) {}
+  explicit BackwardVisitState(SCCInterface::SCCNode Node)
+    : Node(Node), Current(Node->predBegin()) {}
 
   bool isAllChildrenVisited() const {
     return Current == Node->predEnd();
@@ -58,7 +52,7 @@ public:
 
   SCCInterface::SCCNode nextChild() {
     assert(!isAllChildrenVisited() && "all predecessors are visited");
-    SCCInterface::SCCNode Child = Current->lock();
+    SCCInterface::SCCNode Child = *Current;
     ++Current;
     return Child;
   }
@@ -75,8 +69,8 @@ public:
     {
       std::vector<ForwardVisitState> VisitStack;
       std::unordered_set<SCCNode> Discovered;
-      VisitStack.emplace_back(*G.begin());
-      Discovered.emplace(*G.begin());
+      VisitStack.emplace_back(&(*G.begin()));
+      Discovered.emplace(&(*G.begin()));
 
       while (!VisitStack.empty()) {
         // invariant: nodes on the stack are not visited yet
@@ -138,10 +132,10 @@ public:
     std::unordered_map<SCCNode, DFSState> SCCStates;
     std::vector<SCCNode> SCCCandiates;
 
-    VisitStack.emplace_back(*G.begin());
-    Visited.emplace(*G.begin());
-    SCCCandiates.emplace_back(*G.begin());
-    SCCStates.emplace(*G.begin(), DFSState(DFSNumber++));
+    VisitStack.emplace_back(&(*G.begin()));
+    Visited.emplace(&(*G.begin()));
+    SCCCandiates.emplace_back(&(*G.begin()));
+    SCCStates.emplace(&(*G.begin()), DFSState(DFSNumber++));
 
     while (!VisitStack.empty()) {
       while (!VisitStack.back().isAllChildrenVisited()) {

@@ -7,7 +7,7 @@
 #include "Dominator.h"
 
 void DominatorTree::SLTForestNode::print(std::ostream &ouput) const {
-    graphNode->print(std::cout);
+    graphNode.print(std::cout);
     std::cout << ": dfsNum " << dfsNum <<
                  ", iDom " << iDom <<
                  ", semiDom " << semiDom <<
@@ -18,7 +18,7 @@ void DominatorTree::SLTForestNode::print(std::ostream &ouput) const {
 }
 
 const std::vector<DominatorTree::SLTForestNodeSP> &
-DominatorTree::SLTForest::recalculate(const GraphNodeSP &entry) {
+DominatorTree::SLTForest::recalculate(const GraphNode &entry) {
     Clear();
     DoDFS(entry);
 
@@ -32,10 +32,10 @@ DominatorTree::SLTForest::recalculate(const GraphNodeSP &entry) {
         /* std::cout << __func__ << */
         /*              " stage 1: before calculating semi-dominators for "; */
         /* forestNode->print(std::cout); */
-        for (auto predIt = forestNode->graphNode->predBegin();
-             predIt != forestNode->graphNode->predEnd();
+        for (auto predIt = forestNode->graphNode.predBegin();
+             predIt != forestNode->graphNode.predEnd();
              predIt++) {
-             const SLTForestNodeSP &predNode = m_nodeMap[predIt->lock()];
+             const SLTForestNodeSP &predNode = m_nodeMap[*predIt];
              /* std::cout << "    predecessor: "; */
              /* predNode->print(std::cout); */
              int minLabel = Eval(predNode->dfsNum);
@@ -77,28 +77,29 @@ DominatorTree::SLTForest::recalculate(const GraphNodeSP &entry) {
     return m_forestNodes;
 }
 
-void DominatorTree::SLTForest::DoDFS(const GraphNodeSP &entry) {
+void DominatorTree::SLTForest::DoDFS(const GraphNode &entry) {
     assert(m_lastDFSNum == SLT_FOREST_INIT_DFS_NUM &&
         m_forestNodes.empty() && m_nodeMap.empty() &&
         "can not run DoDFS on an already constructed forest");
 
-    using GraphNodeAndIt = std::pair<GraphNodeSP, GraphNode::const_iterator>;
-    std::vector<GraphNodeAndIt> graphNodeStack {{ entry, entry->succBegin() }};
+    using GraphNodeAndIt = std::pair<const GraphNode &, GraphNode::const_iterator>;
+    std::vector<GraphNodeAndIt> graphNodeStack;
+    graphNodeStack.emplace_back(entry, entry.succBegin());
     CreateForestNode(SLT_FOREST_INVALID_DFS_NUM, entry);
 
     while (!graphNodeStack.empty()) {
-        auto &[graphNodeSP, succIt] = graphNodeStack.back();
+        auto &[graphNode, succIt] = graphNodeStack.back();
 
-        if (succIt == graphNodeSP->succEnd()) {
+        if (succIt == graphNode.succEnd()) {
             graphNodeStack.pop_back();
             continue;
         }
 
-        if (FindNextUnvisited(succIt, graphNodeSP->succEnd())) {
+        if (FindNextUnvisited(succIt, graphNode.succEnd())) {
             SLTForestNodeSP forestNodeSP = CreateForestNode(
-                m_nodeMap.at(graphNodeSP)->dfsNum, succIt->lock());
-            GraphNodeSP succ = succIt->lock();
-            graphNodeStack.emplace_back(succ, succ->succBegin());
+                m_nodeMap.at(&graphNode)->dfsNum, **succIt);
+            const GraphNode *succ = *succIt;
+            graphNodeStack.emplace_back(*succ, succ->succBegin());
         }
     }
 }
@@ -107,7 +108,7 @@ bool DominatorTree::SLTForest::FindNextUnvisited(
     GraphNode::const_iterator &it,
     const GraphNode::const_iterator &end) {
     while (it != end) {
-        if (m_nodeMap.count(it->lock()) == 0) {
+        if (m_nodeMap.count(*it) == 0) {
             return true;
         }
         it++;
@@ -116,19 +117,19 @@ bool DominatorTree::SLTForest::FindNextUnvisited(
 }
 
 DominatorTree::SLTForestNodeSP DominatorTree::SLTForest::CreateForestNode(
-    int parent, const GraphNodeSP &child) {
-    assert(m_nodeMap.find(child) == m_nodeMap.end() &&
+    int parent, const GraphNode &child) {
+    assert(m_nodeMap.find(&child) == m_nodeMap.end() &&
         "child is expected not visited");
     SLTForestNodeSP forestNodeSP = std::make_shared<SLTForestNode>(
         parent, ++m_lastDFSNum, child);
-    m_nodeMap.emplace(child, forestNodeSP);
+    m_nodeMap.emplace(&child, forestNodeSP);
     m_forestNodes.emplace_back(forestNodeSP);
     return forestNodeSP;
 }
 
 DominatorTree::SLTForestNodeSP DominatorTree::SLTForest::FindForestNode(
-    const GraphNodeSP &graphNodeSP) const {
-    const auto it = m_nodeMap.find(graphNodeSP);
+    const GraphNode &graphNode) const {
+    const auto it = m_nodeMap.find(&graphNode);
     if (it == m_nodeMap.end()) {
         return SLTForestNodeSP();
     } else {
@@ -155,7 +156,7 @@ void DominatorTree::SLTForest::print(std::ostream &output) const {
     output << "<SLTForest " << ptrStr << ">" << std::endl;
     for (const auto &forestNode : m_forestNodes) {
         output << indent << forestNode->dfsNum << ": ";
-        forestNode->graphNode->print(output);
+        forestNode->graphNode.print(output);
         output << std::endl;
     }
 }
@@ -202,7 +203,7 @@ int DominatorTree::SLTForest::Eval(int nodeNum) {
     return m_forestNodes[nodeNum]->label;
 }
 
-bool DominatorTree::reconstruct(const Graph &graph, const GraphNodeSP &entry) {
+bool DominatorTree::reconstruct(const Graph &graph, const GraphNode &entry) {
     SLTForest forest {};
     const auto forestNodes = forest.recalculate(entry);
     assert(!forestNodes.empty() && "forest should not be empty");
@@ -213,28 +214,28 @@ bool DominatorTree::reconstruct(const Graph &graph, const GraphNodeSP &entry) {
 
     m_root = std::make_shared<DominatorTreeNode>(
         forestNodes[0]->graphNode, DominatorTreeNode::ROOT_LEVEL);
-    m_nodeMap.emplace(m_root->getGraphNode().lock(), m_root);
+    m_nodeMap.emplace(&m_root->getGraphNode(), m_root);
 
     for (int i = 1; i < static_cast<int>(forestNodes.size()); i++) {
         const SLTForestNodeSP &node = forestNodes[i];
-        const GraphNodeSP &graphNode = node->graphNode;
+        const GraphNode &graphNode = node->graphNode;
         int iDom = node->iDom;
         const SLTForestNodeSP &iDomForestNode = forestNodes[iDom];
-        const GraphNodeSP &iDomGraphNode = iDomForestNode->graphNode;
-        const DominatorTreeNodeSP &iDomTreeNode = m_nodeMap[iDomGraphNode];
+        const GraphNode &iDomGraphNode = iDomForestNode->graphNode;
+        const DominatorTreeNodeSP &iDomTreeNode = m_nodeMap[&iDomGraphNode];
         DominatorTreeNodeSP treeNode = std::make_shared<DominatorTreeNode>(
             graphNode, iDomTreeNode->getLevel() + 1);
         treeNode->setParent(iDomTreeNode);
-        m_nodeMap.emplace(graphNode, treeNode);
+        m_nodeMap.emplace(&graphNode, treeNode);
     }
 
     return false;
 }
 
 bool DominatorTree::dominates(
-    const GraphNodeSP &node1, const GraphNodeSP &node2) const {
-    const auto &treeNodeIt1 = m_nodeMap.find(node1);
-    const auto &treeNodeIt2 = m_nodeMap.find(node2);
+    const GraphNode &node1, const GraphNode &node2) const {
+    const auto &treeNodeIt1 = m_nodeMap.find(&node1);
+    const auto &treeNodeIt2 = m_nodeMap.find(&node2);
     assert(treeNodeIt1 != m_nodeMap.end() && treeNodeIt1 != m_nodeMap.end() &&
         "node1 and node2 should be in the dominator tree");
     const DominatorTreeNodeSP &treeNode1 = treeNodeIt1->second;
@@ -255,9 +256,9 @@ bool DominatorTree::dominates(
 }
 
 bool DominatorTree::iDominates(
-    const GraphNodeSP &parent, const GraphNodeSP &child) const {
-  const auto &parentIt = m_nodeMap.find(parent);
-  const auto &childIt = m_nodeMap.find(child);
+    const GraphNode &parent, const GraphNode &child) const {
+  const auto &parentIt = m_nodeMap.find(&parent);
+  const auto &childIt = m_nodeMap.find(&child);
   assert(parentIt != m_nodeMap.end() &&
          childIt != m_nodeMap.end() &&
          "parent and child should be in the dominator tree");
@@ -272,10 +273,10 @@ bool DominatorTree::iDominates(
 }
 
 static void PrintGraphNode(
-    int level, const GraphNodeWP &graphNode, std::ostream &output) {
+    int level, const GraphNode &graphNode, std::ostream &output) {
     constexpr int nodeIndent = 4;
     output << std::string(static_cast<std::size_t>(nodeIndent * level), ' ');
-    graphNode.lock()->print(output);
+    graphNode.print(output);
     output << std::endl;
 }
 

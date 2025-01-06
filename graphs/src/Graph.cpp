@@ -7,45 +7,36 @@
 
 #include "Graph.h"
 
-static bool operator==(const GraphNodeWP &a, const GraphNodeWP &b) {
-    return a.lock() == b.lock();
-}
-
-bool GraphNode::AddPredecessor(const GraphNodeWP &pred) {
-    assert(!pred.expired() && "pred should point to an existing graph node");
+bool GraphNode::AddPredecessor(GraphNode &pred) {
     const auto it = std::find(
-        m_predecessors.begin(), m_predecessors.end(), pred);
+        m_predecessors.begin(), m_predecessors.end(), &pred);
     if (it != m_predecessors.end()) {
         return false;
     } else {
-        m_predecessors.push_back(pred);
+        m_predecessors.push_back(&pred);
         return true;
     }
 }
 
-bool GraphNode::AddSuccessor(const GraphNodeWP &succ) {
-    assert(!succ.expired() && "succ should point to an existing graph node");
+bool GraphNode::AddSuccessor(GraphNode &succ) {
     const auto it = std::find(
-        m_successors.begin(), m_successors.end(), succ);
+        m_successors.begin(), m_successors.end(), &succ);
     if (it != m_successors.end()) {
         return false;
     } else {
-        m_successors.push_back(succ);
+        m_successors.push_back(&succ);
         return true;
     }
 }
 
-GraphNodeSP Graph::createNode(const char *name) {
+GraphNode &Graph::createNode(const char *name) {
     assert(name && "name should be a non-nullptr c-string");
-    GraphNodeSP node(new GraphNode(name, *this));
-    m_nodes.push_back(node);
-    return node;
+    m_nodes.emplace_back(name, *this);
+    return m_nodes.back();;
 }
 
-bool Graph::connect(GraphNodeSP &a, GraphNodeSP &b) {
-    assert(a.get() && "a should point to an existing graph node");
-    assert(b.get() && "b should point to an existing graph node");
-    return a->AddSuccessor(b) && b->AddPredecessor(a);
+bool Graph::connect(GraphNode &a, GraphNode &b) {
+    return a.AddSuccessor(b) && b.AddPredecessor(a);
 }
 
 int printPtr(char *buf, std::size_t bufSize, const void *ptr) {
@@ -69,12 +60,12 @@ static void PrintGraphNodeList(std::ostream &output,
         return;
     }
 
-    PrintGraphNode(output, *(begin->lock()));
+    PrintGraphNode(output, **begin);
     begin++;
 
     while (begin != end) {
         output << ", ";
-        PrintGraphNode(output, *(begin->lock()));
+        PrintGraphNode(output, **begin);
         begin++;
     }
 
@@ -99,13 +90,13 @@ void Graph::print(std::ostream &output) const {
     constexpr const char *predIndent = "        ";
     constexpr const char *succIndent = predIndent;
 
-    for (const GraphNodeSP &nodeSP : *this) {
+    for (const GraphNode &node : *this) {
         output << nodeIndent;
-        PrintGraphNode(output, *nodeSP);
+        PrintGraphNode(output, node);
         output << std::endl << predIndent << "predecessors: ";
-        PrintGraphNodeList(output, nodeSP->predBegin(), nodeSP->predEnd());
+        PrintGraphNodeList(output, node.predBegin(), node.predEnd());
         output << std::endl << succIndent << "successors: ";
-        PrintGraphNodeList(output, nodeSP->succBegin(), nodeSP->succEnd());
+        PrintGraphNodeList(output, node.succBegin(), node.succEnd());
         output << std::endl;
     }
 }
